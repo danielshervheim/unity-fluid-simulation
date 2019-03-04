@@ -121,6 +121,8 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 189712912}
+  - component: {fileID: 189712914}
+  - component: {fileID: 189712913}
   - component: {fileID: 189712911}
   m_Layer: 0
   m_Name: Fluid
@@ -137,18 +139,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 189712910}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01a87d35936f2ab43a4ee7a344d292a1, type: 3}
+  m_Script: {fileID: 11500000, guid: c865cdf29f748814d9e8178f83d87769, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  n: 50
-  debugMouse: 1
-  debugVelocity: 1
-  affectVelocity: 1
-  velocityAffectionRadius: 5
-  debugDensity: 1
-  affectDensity: 1
-  increaseDensity: 1
-  densityAffectionRadius: 5
+  n: 64
+  showVelocity: 0
+  diff: 0
+  visc: 0
+  force: 50
+  source: 100
+  material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
 --- !u!4 &189712912
 Transform:
   m_ObjectHideFlags: 0
@@ -162,6 +162,47 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &189712913
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 189712910}
+  m_Mesh: {fileID: 0}
+--- !u!23 &189712914
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 189712910}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_Materials:
+  - {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 0
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
 --- !u!1 &952335418
 GameObject:
   m_ObjectHideFlags: 0
