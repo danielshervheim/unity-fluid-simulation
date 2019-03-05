@@ -1,0 +1,64 @@
+﻿
+int n;
+
+
+uint To1D(uint2 id) {
+	return id.y*(n+2) + id.x;
+}
+
+uint To1D(int x, int y) {
+	return y*(n+2) + x;
+}
+
+uint2 To2D(uint id) {
+	return uint2(id%(n+2), id/(n+2));
+}
+
+
+
+#pragma kernel LinearSolve
+		
+int ls_b;
+RWStructuredBuffer<float> ls_x, ls_x0;
+float ls_a, ls_c;
+
+[numthreads(32, 32, 1)]
+void LinearSolve (uint2 id : SV_DispatchThreadID) {
+	if (id.x >= 1 && id.x <= n && id.y >= 1 && id.y <= n) {
+		for (int k = 0; k < 20; k++) {
+			ls_x[To1D(id)] = (ls_x0[To1D(id)] + ls_a*(
+				ls_x[To1D(id-uint2(1, 0))] +
+				ls_x[To1D(id+uint2(1, 0))] +
+				ls_x[To1D(id-uint2(0, 1))] +
+				ls_x[To1D(id+uint2(0, 1))])) / ls_c;
+		}
+	}
+}
+
+
+
+
+#pragma kernel Project1
+
+[numthreads(256, 1, 1)]
+void Project1 (uint3 id : SV_DispatchThreadID) {
+	
+}
+
+
+
+#pragma kernel Project2
+
+[numthreads(256, 1, 1)]
+void Project2 (uint3 id : SV_DispatchThreadID) {
+	
+}
+
+
+
+#pragma kernel Advect
+
+[numthreads(256, 1, 1)]
+void Advect (uint3 id : SV_DispatchThreadID) {
+	
+}

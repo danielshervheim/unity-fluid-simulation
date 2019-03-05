@@ -46,9 +46,13 @@ public class GPUFluid2D : MonoBehaviour {
 	Vector3 mousePos, mouseDelta;
 
 	// Compute Buffers to hold the arrays and perform computations in parallel.
-	// todo: add buffers
+	ComputeBuffer buffer1, buffer2;
 
+	// Compute kernels.
+	int k_linearSolve, k_project1, k_project2, k_advect;
 
+	// todo: remove eventually
+	public bool parallel = true;
 
 	void Start () {
 		size = (n+2)*(n+2);
@@ -82,6 +86,13 @@ public class GPUFluid2D : MonoBehaviour {
 		// Create a texture to display the density field and assign it to the material.
 		texture = new Texture2D(n+2, n+2, TextureFormat.RGBAHalf, false);
 		material.SetTexture("_MainTex", texture);
+
+		// Create the compute buffers to hold the data temporarily.
+		buffer1 = new ComputeBuffer(size, 4);
+		buffer2 = new ComputeBuffer(size, 4);
+
+		// Get the compute kernels.
+		k_linearSolve = compute.FindKernel("LinearSolve");
 	}
 	
 
@@ -155,16 +166,34 @@ public class GPUFluid2D : MonoBehaviour {
 	}
 
 	void LinearSolve(int n, int b, ref float[] x, ref float[] x0, float a, float c) {
-		int i, j, k;
+		if (parallel) {
+			buffer1.SetData(x);
+			buffer2.SetData(x0);
 
-		for (k = 0; k < 20; k++) {
-			for (i = 1; i <= n; i++) {
-				for (j = 1; j <= n; j++) {
-					x[To1D(i,j)] = (x0[To1D(i,j)] + a*(x[To1D(i-1,j)]+x[To1D(i+1,j)]+x[To1D(i,j-1)]+x[To1D(i,j+1)]))/c;
-				}
-			}
-			SetBoundary(n, b, ref x);
+			compute.SetInt("n", n);
+			compute.SetInt("ls_b", b);
+			compute.SetBuffer(k_linearSolve, "ls_x", buffer1);
+			compute.SetBuffer(k_linearSolve, "ls_x0", buffer2);
+			compute.SetFloat("ls_a", a);
+			compute.SetFloat("ls_c", c);
+
+			compute.Dispatch(k_linearSolve, 32, 32, 1);
+
+			buffer1.GetData(x);
+			buffer2.GetData(x0);
 		}
+		else {
+			int i, j, k;
+
+			for (k = 0; k < 20; k++) {
+				for (i = 1; i <= n; i++) {
+					for (j = 1; j <= n; j++) {
+						x[To1D(i,j)] = (x0[To1D(i,j)] + a*(x[To1D(i-1,j)]+x[To1D(i+1,j)]+x[To1D(i,j-1)]+x[To1D(i,j+1)]))/c;
+					}
+				}
+				SetBoundary(n, b, ref x);
+			}
+		}		
 	}
 
 	
@@ -338,5 +367,10 @@ public class GPUFluid2D : MonoBehaviour {
 		p += 0.5f * Vector3.one;
 		p *= (n+2);
 		return new Vector2Int((int)p.x, (int)p.z);
+	}
+
+	void OnDestroy() {
+		buffer1.Release();
+		buffer2.Release();
 	}
 }

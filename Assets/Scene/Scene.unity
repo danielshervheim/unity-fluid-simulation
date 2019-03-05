@@ -141,12 +141,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
-  compute: {fileID: 0}
+  compute: {fileID: 7200000, guid: f83b13eb40fd2a445822393bd4538a1f, type: 3}
   n: 64
   diff: 0
   visc: 0
-  force: 50
+  force: 150
   source: 100
+  parallel: 1
 --- !u!4 &66193100
 Transform:
   m_ObjectHideFlags: 0
@@ -187,13 +188,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c865cdf29f748814d9e8178f83d87769, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
+  compute: {fileID: 0}
   n: 64
-  showVelocity: 0
   diff: 0
   visc: 0
-  force: 50
+  force: 75
   source: 100
-  material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
 --- !u!4 &189712912
 Transform:
   m_ObjectHideFlags: 0
