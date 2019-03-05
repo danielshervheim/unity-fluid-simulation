@@ -2,31 +2,58 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CPUFluid2D : MonoBehaviour {
+public class GPUFluid2D : MonoBehaviour {
 
+
+
+	/*
+	todo:
+	parallelize over x,y:
+
+	LinearSolve
+
+	ProjectPart1
+	ProjectPart2
+
+	Advect
+
+	// for each forloop required, upload to gpu as buffer and compute in parallel, then readback to cpu
+
+
+
+	*/
+
+
+	[Header("Required")]
+	public Material material;
+	public ComputeShader compute;
+
+	[Header("Simulation Parameters")]
 	public int n = 64;
-	private int size;
-
-	public bool showVelocity = false;
-
 	public float diff = 0f;
 	public float visc = 0f;
-	public float force = 50f;
+	public float force = 75f;
 	public float source = 100f;
 
-	private float[] u, u_prev, v, v_prev;
-	private float[] dens, dens_prev;
+	// Texture to visualize the density field.
+	Texture2D texture;
 
-	private Vector3 mousePos, mouseDelta;
-	
-	public Material material;
-	private Texture2D texture;
+	// Arrays to hold the field values.
+	int size;
+	float[] u, u_prev, v, v_prev, dens, dens_prev;
 
-	// Use this for initialization
+	// Mouse movement variables.
+	Vector3 mousePos, mouseDelta;
+
+	// Compute Buffers to hold the arrays and perform computations in parallel.
+	// todo: add buffers
+
+
+
 	void Start () {
 		size = (n+2)*(n+2);
 
-		/* Create the empty arrays. */
+		// Create the empty arrays.
 		u = new float[size];
 		u_prev = new float[size];
 
@@ -36,37 +63,37 @@ public class CPUFluid2D : MonoBehaviour {
 		dens = new float[size];
 		dens_prev = new float[size];
 
-		/* Setup the camera to look over the simulation. This allows
-		us to easily calculate the mouse position in simulation space. */
-		Camera.main.orthographic = true;
-		Camera.main.orthographicSize = (n+2)/2f;
-		Camera.main.transform.position = new Vector3(0.5f*(n+2f), 10f, 0.5f*(n+2f));
-		Camera.main.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-
-		/* Create Texture to display info. */
-		texture = new Texture2D(n+2, n+2, TextureFormat.RGBAHalf, false);
-
-		/* Instantiate and transform a plane to show the texture. */
+		// Spawn a plane to render the field(s) onto.
 		GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-		plane.transform.localScale = 0.1f * new Vector3(n+2f, 10f, n+2f);
-		plane.transform.localPosition = 0.5f*(n+2f)*(Vector3.right+Vector3.forward);
+		plane.transform.parent = this.transform;
+		plane.transform.localPosition = Vector3.zero;
 		plane.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-		
-		/* Assign the material to the plane, and the texture to the material. */
+		plane.transform.localScale = Vector3.one * 0.1f;
 		plane.GetComponent<MeshRenderer>().material = material;
+
+		// Adjust the camera to be over the plane.
+		Camera.main.transform.parent = this.transform;
+		Camera.main.transform.localPosition = Vector3.up * 5f;
+		Camera.main.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+		Camera.main.transform.localScale = Vector3.one;
+		Camera.main.orthographic = true;
+		Camera.main.orthographicSize = 0.5f;
+
+		// Create a texture to display the density field and assign it to the material.
+		texture = new Texture2D(n+2, n+2, TextureFormat.RGBAHalf, false);
 		material.SetTexture("_MainTex", texture);
 	}
 	
-	// Update is called once per frame
+
+
 	void Update () {
 		// Update the mouse variables.
 		mouseDelta = GetMousePos() - mousePos;
 		mousePos = GetMousePos();
 
+		// Clear the fields if the middle mouse button is pressed.
 		if (Input.GetMouseButtonDown(2)) {
-			u = new float[size];
-			v = new float[size];
-			dens = new float[size];
+			ClearFields();
 		}
 
 		// Advance simulation.
@@ -75,18 +102,20 @@ public class CPUFluid2D : MonoBehaviour {
 		DensityStep(n, ref dens, ref dens_prev, ref u, ref v, diff, Time.deltaTime);
 
 		// Upload the density as colors to the texture.
-		Color[] cols = texture.GetPixels(0);
-		for (int i = 0; i < cols.Length; i++) {
-			if (!showVelocity) {
-				cols[i] = new Color(dens[i], dens[i], dens[i], 1f);
-			}
-			else {
-				cols[i] = new Color(u[i], v[i], 0f, 1f);
-			}
-		}
-		texture.SetPixels(cols, 0);
-		texture.Apply();
+		DrawDensity();
 	}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	void Swap(ref float[] a, ref float[] b) {
@@ -254,13 +283,33 @@ public class CPUFluid2D : MonoBehaviour {
 		}
 
 		if (Input.GetMouseButton(0)) {
-			u[To1D(x, y)] = force * mouseDelta.x;
-			v[To1D(x, y)] = force * mouseDelta.z;
+			u[To1D(x, y)] = force * mouseDelta.x * (n+2);  // scale by resolution.
+			v[To1D(x, y)] = force * mouseDelta.z * (n+2);  // scale by resolution.
 		}
 
 		if (Input.GetMouseButton(1)) {
 			d[To1D(x, y)] = source;
 		}
+	}
+
+
+	void ClearFields() {
+		u = new float[size];
+		v = new float[size];
+		dens = new float[size];
+	}
+
+
+
+	void DrawDensity() {
+		Color[] tmp = texture.GetPixels(0);
+
+		for (int i = 0; i < tmp.Length; i++) {
+			tmp[i] = new Color(dens[i], dens[i], dens[i], 1f);
+		}
+
+		texture.SetPixels(tmp, 0);
+		texture.Apply();
 	}
 
 
@@ -286,8 +335,8 @@ public class CPUFluid2D : MonoBehaviour {
 
 	/* Returns the ID of the cell nearest to the input position. */
 	Vector2Int GetIdFromPosition(Vector3 p) {
-		int x = (int)Mathf.Clamp(p.x, 0f, (n+2) - 1);
-		int y = (int)Mathf.Clamp(p.z, 0f, (n+2) - 1);
-		return new Vector2Int(x, y);
+		p += 0.5f * Vector3.one;
+		p *= (n+2);
+		return new Vector2Int((int)p.x, (int)p.z);
 	}
 }
