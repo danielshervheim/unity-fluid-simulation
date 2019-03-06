@@ -1,0 +1,123 @@
+﻿
+uint n;
+
+uint To1D(uint2 id) {
+	return id.y*(n+2) + id.x;
+}
+
+uint To1D(int x, int y) {
+	return y*(n+2) + x;
+}
+
+uint2 To2D(uint id) {
+	return uint2(id%(n+2), id/(n+2));
+}
+
+
+
+#pragma kernel LinearSolve
+		
+int ls_n, ls_b;
+RWStructuredBuffer<float> ls_x, ls_x0;
+float ls_a, ls_c;
+
+[numthreads(32, 32, 1)]
+void LinearSolve (uint2 id : SV_DispatchThreadID) {
+	if (id.x >= 1 && id.x <= n && id.y >= 1 && id.y <= n) {
+		for (int k = 0; k < 20; k++) {
+			ls_x[To1D(id)] = (ls_x0[To1D(id)] + ls_a*(
+				ls_x[To1D(id-uint2(1, 0))] +
+				ls_x[To1D(id+uint2(1, 0))] +
+				ls_x[To1D(id-uint2(0, 1))] +
+				ls_x[To1D(id+uint2(0, 1))])) / ls_c;
+		}
+	}
+}
+
+
+
+
+#pragma kernel Project1
+
+int proj_1_n;
+RWStructuredBuffer<float> proj_1_u, proj_1_v, proj_1_p, proj_1_div;
+
+[numthreads(32, 32, 1)]
+void Project1 (uint2 id : SV_DispatchThreadID) {
+	if (id.x >= 1 && id.x <= n && id.y >= 1 && id.y <= n) {
+		proj_1_div[To1D(id)] = -0.5 * (
+			proj_1_u[To1D(id + uint2(1, 0))] -
+			proj_1_u[To1D(id - uint2(1, 0))] +
+			proj_1_v[To1D(id + uint2(0, 1))] -
+			proj_1_v[To1D(id - uint2(0, 1))]) / proj_1_n;
+
+		proj_1_p[To1D(id)] = 0.0;
+	}
+}
+
+
+
+#pragma kernel Project2
+
+int proj_2_n;
+RWStructuredBuffer<float> proj_2_u, proj_2_v, proj_2_p, proj_2_div;
+
+[numthreads(32, 32, 1)]
+void Project2 (uint2 id : SV_DispatchThreadID) {
+	if (id.x >= 1 && id.x <= n && id.y >= 1 && id.y <= n) {
+		proj_2_u[To1D(id)] -= 0.5 * proj_2_n * (proj_2_p[To1D(id + uint2(1, 0))] - proj_2_p[To1D(id - uint2(1, 0))]);
+		proj_2_v[To1D(id)] -= 0.5 * proj_2_n * (proj_2_p[To1D(id + uint2(0, 1))] - proj_2_p[To1D(id - uint2(0, 1))]);
+	}
+}
+
+
+
+
+#pragma kernel Advect
+
+int adv_n, adv_b;
+RWStructuredBuffer<float> adv_d, adv_d0, adv_u, adv_v;
+float adv_dt;
+
+[numthreads(32, 32, 1)]
+void Advect (uint2 id : SV_DispatchThreadID) {
+	if (id.x >= 1 && id.x <= n && id.y >= 1 && id.y <= n) {
+		float dt0 = adv_dt*adv_n;
+
+		float x = id.x - dt0*adv_u[To1D(id)];
+		if (x < 0.5) x = 0.5;
+		if (x > adv_n + 0.5) x = adv_n + 0.5;
+		int i0 = (int)x;
+		int i1 = i0+1;
+
+		float y = id.y - dt0*adv_v[To1D(id)];
+		if (y < 0.5) y = 0.5;
+		if (y > adv_n + 0.5) y = adv_n + 0.5;
+		int j0 = (int)y;
+		int j1 = j0 + 1;
+
+		float s1 = x - i0;
+		float s0 = 1.0 - s1;
+
+		float t1 = y - j0;
+		float t0 = 1.0 - t1;
+
+		adv_d[To1D(id)] = s0*(t0*adv_d0[To1D(i0,j0)] + t1*adv_d0[To1D(i0,j1)]) +
+						  s1*(t0*adv_d0[To1D(i1,j0)] + t1*adv_d0[To1D(i1,j1)]);
+	}
+}
+
+
+
+
+
+#pragma kernel Buffer2Texture
+
+RWTexture2D<float4> b2t_tex;
+RWStructuredBuffer<float> b2t_buf;
+
+[numthreads(32, 32, 1)]
+void Buffer2Texture (uint2 id : SV_DispatchThreadID) {
+	float d = b2t_buf[To1D(id)];
+	b2t_tex[id] = float4(d,d,d,1);
+}
