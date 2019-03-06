@@ -1,0 +1,149 @@
+//
+// GLOBAL VARIABLES
+//
+
+int n, n2;
+float dt;
+
+
+
+//
+// GLOBAL METHODS
+//
+
+/* Returns whether an element is legally within the bounds of the grid. */
+bool IsInBounds(uint2 id) {
+	return id.x >= 1 && id.y >= 1 && id.x <= (uint)n && id.y <= (uint)n;
+}
+
+/* Converts a 2d index into a 1d index. */
+uint To1D(uint2 id) {
+	return id.y*(n+2) + id.x;
+}
+
+/* Converts two indicies into a 1d index. */
+uint To1D(int x, int y) {
+	return y*(n+2) + x;
+}
+
+
+
+//
+// SIMULATION METHODS
+//
+
+#pragma kernel AddSource
+
+int as_n;
+RWStructuredBuffer<float> as_x, as_s;
+float as_dt;
+
+[numthreads(32, 32, 1)]
+void AddSource(uint2 id : SV_DispatchThreadID) {
+	as_x[To1D(id)] += as_dt*as_s[To1D(id)];
+}
+
+
+
+#pragma kernel LinearSolve
+
+int ls_n, ls_b;
+RWStructuredBuffer<float> ls_x, ls_x0;
+float ls_a, ls_c;
+
+[numthreads(32, 32, 1)]
+void LinearSolve (uint2 id : SV_DispatchThreadID) {
+	if (IsInBounds(id)) {
+		for (int k = 0; k < 20; k++) {
+			ls_x[To1D(id)] = (ls_x0[To1D(id)] + ls_a*(
+				ls_x[To1D(id-uint2(1, 0))] +
+				ls_x[To1D(id+uint2(1, 0))] +
+				ls_x[To1D(id-uint2(0, 1))] +
+				ls_x[To1D(id+uint2(0, 1))])) / ls_c;
+		}
+	}
+}
+
+
+
+#pragma kernel ProjectStart
+
+int ps_n;
+RWStructuredBuffer<float> ps_u, ps_v, ps_p, ps_div;
+
+[numthreads(32, 32, 1)]
+void ProjectStart(uint2 id : SV_DispatchThreadID) {
+	if (IsInBounds(id)) {
+		ps_div[To1D(id)] = -0.5 * (
+			ps_u[To1D(id + uint2(1, 0))] -
+			ps_u[To1D(id - uint2(1, 0))] +
+			ps_v[To1D(id + uint2(0, 1))] -
+			ps_v[To1D(id - uint2(0, 1))]) / ps_n;
+
+		ps_p[To1D(id)] = 0.0;
+	}
+}
+
+
+
+#pragma kernel ProjectFinish
+
+int pf_n;
+RWStructuredBuffer<float> pf_u, pf_v, pf_p;
+
+[numthreads(32, 32, 1)]
+void ProjectFinish(uint2 id : SV_DispatchThreadID) {
+	if (IsInBounds(id)) {
+		pf_u[To1D(id)] -= 0.5 * pf_n * (pf_p[To1D(id + uint2(1, 0))] - pf_p[To1D(id - uint2(1, 0))]);
+		pf_v[To1D(id)] -= 0.5 * pf_n * (pf_p[To1D(id + uint2(0, 1))] - pf_p[To1D(id - uint2(0, 1))]);
+	}
+}
+
+
+
+#pragma kernel Advect
+
+int ad_n, ad_b;
+RWStructuredBuffer<float> ad_d, ad_d0, ad_u, ad_v;
+float ad_dt;
+
+[numthreads(32, 32, 1)]
+void Advect (uint2 id : SV_DispatchThreadID) {
+	if (IsInBounds(id)) {
+		float dt0 = ad_dt*ad_n;
+
+		float x = id.x - dt0*ad_u[To1D(id)];
+		if (x < 0.5) x = 0.5;
+		if (x > ad_n + 0.5) x = ad_n + 0.5;
+		int i0 = (int)x;
+		int i1 = i0+1;
+
+		float y = id.y - dt0*ad_v[To1D(id)];
+		if (y < 0.5) y = 0.5;
+		if (y > ad_n + 0.5) y = ad_n + 0.5;
+		int j0 = (int)y;
+		int j1 = j0 + 1;
+
+		float s1 = x - i0;
+		float s0 = 1.0 - s1;
+
+		float t1 = y - j0;
+		float t0 = 1.0 - t1;
+
+		ad_d[To1D(id)] = s0*(t0*ad_d0[To1D(i0,j0)] + t1*ad_d0[To1D(i0,j1)]) +
+						  s1*(t0*ad_d0[To1D(i1,j0)] + t1*ad_d0[To1D(i1,j1)]);
+	}
+}
+
+
+
+#pragma kernel Buffer2Texture
+
+RWTexture2D<float4> b2t_texture;
+RWStructuredBuffer<float> b2t_buffer;
+
+[numthreads(32, 32, 1)]
+void Buffer2Texture(uint2 id : SV_DispatchThreadID) {
+	float val = b2t_buffer[To1D(id)];
+	b2b2t_texture[id] = float4(val, val, val, 1.0);
+}
