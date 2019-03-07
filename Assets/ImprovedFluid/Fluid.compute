@@ -18,12 +18,12 @@ bool IsInBounds(uint2 id) {
 
 /* Converts a 2d index into a 1d index. */
 uint To1D(uint2 id) {
-	return id.y*(n+2) + id.x;
+	return id.y*n2 + id.x;
 }
 
 /* Converts two indicies into a 1d index. */
 uint To1D(int x, int y) {
-	return y*(n+2) + x;
+	return y*n2 + x;
 }
 
 
@@ -108,30 +108,38 @@ RWStructuredBuffer<float> ad_d, ad_d0, ad_u, ad_v;
 float ad_dt;
 
 [numthreads(32, 32, 1)]
-void Advect (uint2 id : SV_DispatchThreadID) {
+void Advect(uint2 id : SV_DispatchThreadID) {
+	int i, j, i0, j0, i1, j1;
+	i = id.x;
+	j = id.y;
+
+	float x, y, s0, t0, s1, t1, dt0;
+
+	dt0 = ad_dt * ad_n;
+
 	if (IsInBounds(id)) {
-		float dt0 = ad_dt*ad_n;
+		x = (float)i - dt0*ad_u[To1D(id)];
+		y = (float)j - dt0*ad_v[To1D(id)];
+		
+		x = max(x, 0.5);
+		x = min(x, ad_n+0.5);
+		i0 = (int)x;
+		i1 = i0 + 1;
+				
+		y = max(y, 0.5);
+		y = min(y, ad_n+0.5);
+		j0 = (int)y;
+		j1 = j0 + 1;
 
-		float x = id.x - dt0*ad_u[To1D(id)];
-		if (x < 0.5) x = 0.5;
-		if (x > ad_n + 0.5) x = ad_n + 0.5;
-		int i0 = (int)x;
-		int i1 = i0+1;
+		s1 = x - (float)i0;
+		s0 = 1.0 - s1;
 
-		float y = id.y - dt0*ad_v[To1D(id)];
-		if (y < 0.5) y = 0.5;
-		if (y > ad_n + 0.5) y = ad_n + 0.5;
-		int j0 = (int)y;
-		int j1 = j0 + 1;
-
-		float s1 = x - i0;
-		float s0 = 1.0 - s1;
-
-		float t1 = y - j0;
-		float t0 = 1.0 - t1;
-
-		ad_d[To1D(id)] = s0*(t0*ad_d0[To1D(i0,j0)] + t1*ad_d0[To1D(i0,j1)]) +
-						  s1*(t0*ad_d0[To1D(i1,j0)] + t1*ad_d0[To1D(i1,j1)]);
+		t1 = y - (float)j0;
+		t0 = 1.0 - t1;
+				
+		ad_d[To1D(id)] = 
+			s0 * (t0*ad_d0[To1D(i0,j0)] + t1*ad_d0[To1D(i0,j1)]) +
+			s1 * (t0*ad_d0[To1D(i1,j0)] + t1*ad_d0[To1D(i1,j1)]);
 	}
 }
 
@@ -140,10 +148,14 @@ void Advect (uint2 id : SV_DispatchThreadID) {
 #pragma kernel Buffer2Texture
 
 RWTexture2D<float4> b2t_texture;
-RWStructuredBuffer<float> b2t_buffer;
+RWStructuredBuffer<float> b2t_u;
+RWStructuredBuffer<float> b2t_v;
+RWStructuredBuffer<float> b2t_dens;
 
 [numthreads(32, 32, 1)]
 void Buffer2Texture(uint2 id : SV_DispatchThreadID) {
-	float val = b2t_buffer[To1D(id)];
-	b2b2t_texture[id] = float4(val, val, val, 1.0);
+	float u = b2t_u[To1D(id)];
+	float v = b2t_v[To1D(id)];
+	float d = b2t_dens[To1D(id)];
+	b2t_texture[id] = abs(float4(u, v, d, 1.0));
 }
