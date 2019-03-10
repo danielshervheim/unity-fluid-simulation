@@ -113,100 +113,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &66193098
-GameObject:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  serializedVersion: 5
-  m_Component:
-  - component: {fileID: 66193100}
-  - component: {fileID: 66193099}
-  m_Layer: 0
-  m_Name: GPUFluid2D
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &66193099
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 66193098}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 434a323c6e14b814fbde429a0cadd5c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
-  compute: {fileID: 7200000, guid: f83b13eb40fd2a445822393bd4538a1f, type: 3}
-  n: 198
-  diff: 0
-  visc: 0
-  force: 150
-  source: 100
---- !u!4 &66193100
-Transform:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 66193098}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &189712910
-GameObject:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  serializedVersion: 5
-  m_Component:
-  - component: {fileID: 189712912}
-  - component: {fileID: 189712911}
-  m_Layer: 0
-  m_Name: CPUFluid2D
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &189712911
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 189712910}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c865cdf29f748814d9e8178f83d87769, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
-  compute: {fileID: 0}
-  n: 64
-  diff: 0
-  visc: 0
-  force: 75
-  source: 100
---- !u!4 &189712912
-Transform:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 189712910}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &952335418
 GameObject:
   m_ObjectHideFlags: 0
@@ -296,15 +202,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 994636957}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 50f3ead95b682f243a7d610d9f76a44e, type: 3}
+  m_Script: {fileID: 11500000, guid: 24d101cfa59b2374580e501e884fee14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  compute: {fileID: 7200000, guid: 1abef17a3385d1d40a6f42ad2fccfa0d, type: 3}
   material: {fileID: 2100000, guid: 73af70329f684ad4fb556efbd8ea3204, type: 2}
-  compute: {fileID: 7200000, guid: 0c679d5d8a5ec3947a14837b9c2dc5fa, type: 3}
-  n: 200
+  n: 510
   diff: 0
   visc: 0
-  force: 75
+  force: 150
   source: 100
 --- !u!4 &994636959
 Transform:
@@ -317,7 +223,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1896215651
 GameObject:
@@ -329,7 +235,6 @@ GameObject:
   - component: {fileID: 1896215654}
   - component: {fileID: 1896215653}
   - component: {fileID: 1896215652}
-  - component: {fileID: 1896215655}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -398,15 +303,3 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1896215655
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1896215651}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9cf113c9ef4908447b2196b3547fa8c5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gpuFluid2D: {fileID: 66193099}

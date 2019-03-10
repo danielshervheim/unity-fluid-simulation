@@ -1,20 +1,17 @@
-﻿using System.Collections;
+﻿//
+// Copyright © Daniel Shervheim, 2019
+// danielshervheim@gmail.com
+// danielshervheim.com
+//
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GPUFluid2D : MonoBehaviour {
-
-	/*
-		Note: this implementation could be considered "GPU accelerated"
-		but it is not a purely GPU implementation. Multiple CPU-GPU buffer handshakes
-		are required per update, which is costly. I believe there is still potential for
-		serious performance improvements by implementing all simulation methods on the GPU
-		(perhaps storing the fields as 2d render textures as well).
-	*/
+public class CPUFluid : MonoBehaviour {
 
 	[Header("Required")]
 	public Material material;
-	public ComputeShader compute;
 
 	[Header("Simulation Parameters")]
 	public int n = 64;
@@ -24,7 +21,7 @@ public class GPUFluid2D : MonoBehaviour {
 	public float source = 100f;
 
 	// Texture to visualize the density field.
-	RenderTexture texture;
+	Texture2D texture;
 
 	// Arrays to hold the field values.
 	int size;
@@ -33,13 +30,7 @@ public class GPUFluid2D : MonoBehaviour {
 	// Mouse movement variables.
 	Vector3 mousePos, mouseDelta;
 
-	// Compute Buffers to hold the arrays and perform computations in parallel.
-	ComputeBuffer buffer1, buffer2;
-	ComputeBuffer buffer3, buffer4;
 
-	// Compute kernels.
-	int k_linearSolve, k_project1, k_project2, k_advect;
-	int k_buffer2texture;
 
 	void Start () {
 		size = (n+2)*(n+2);
@@ -70,27 +61,9 @@ public class GPUFluid2D : MonoBehaviour {
 		Camera.main.orthographic = true;
 		Camera.main.orthographicSize = 0.5f;
 
-		// Create a new renderTexture to display the density field and assign it to the material.
-		texture = new RenderTexture(n+2, n+2, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-		texture.enableRandomWrite = true;
-		texture.Create();
+		// Create a texture to display the density field and assign it to the material.
+		texture = new Texture2D(n+2, n+2, TextureFormat.RGBAHalf, false);
 		material.SetTexture("_MainTex", texture);
-
-		// Create the compute buffers to hold the data temporarily.
-		buffer1 = new ComputeBuffer(size, 4);
-		buffer2 = new ComputeBuffer(size, 4);
-		buffer3 = new ComputeBuffer(size, 4);
-		buffer4 = new ComputeBuffer(size, 4);
-
-		// Get the compute kernels.
-		k_linearSolve = compute.FindKernel("LinearSolve");
-		k_project1 = compute.FindKernel("Project1");
-		k_project2 = compute.FindKernel("Project2");
-		k_advect = compute.FindKernel("Advect");
-		k_buffer2texture = compute.FindKernel("Buffer2Texture");
-
-		// Set the n parameter for the compute shader.
-		compute.SetInt("n", n);
 	}
 	
 
@@ -139,10 +112,8 @@ public class GPUFluid2D : MonoBehaviour {
 
 
 
-	/*	// Note: we have chosen to omit the boundary conditions for now as
-		// it was causing weird wraparound artefacts which I didn't feel like debugging
-		// due to project due-date time crunch :)
 	void SetBoundary(int n, int b, ref float[] x) {
+		/*
 		int i;
 
 		for (i = 1; i <= n; i++) {
@@ -155,89 +126,89 @@ public class GPUFluid2D : MonoBehaviour {
 		x[To1D(0, 0)] = 0.5f * (x[To1D(1, 0)] + x[To1D(0, 1)]);
 		x[To1D(0, n+1)] = 0.5f * (x[To1D(1, n+1)] + x[To1D(0, n)]);
 		x[To1D(n+1, 0)] = 0.5f * (x[To1D(n, 0)] + x[To1D(n+1, 1)]);
-		x[To1D(n+1, n+1)] = 0.5f * (x[To1D(n, n+1)] + x[To1D(n+1, n)]);	
-	} */
+		x[To1D(n+1, n+1)] = 0.5f * (x[To1D(n, n+1)] + x[To1D(n+1, n)]);
+		*/
+	}
 
 
 
 	void LinearSolve(int n, int b, ref float[] x, ref float[] x0, float a, float c) {
-		buffer1.SetData(x);
-		buffer2.SetData(x0);
 
-		compute.SetInt("ls_n", n);
-		compute.SetInt("ls_b", b);
-		compute.SetBuffer(k_linearSolve, "ls_x", buffer1);
-		compute.SetBuffer(k_linearSolve, "ls_x0", buffer2);
-		compute.SetFloat("ls_a", a);
-		compute.SetFloat("ls_c", c);
+		int i, j, k;
 
-		compute.Dispatch(k_linearSolve, (n+2)/32 + 1, (n+2)/32 + 1, 1);
-
-		buffer1.GetData(x);
-		buffer2.GetData(x0);	
+		for (k = 0; k < 20; k++) {
+			for (i = 1; i <= n; i++) {
+				for (j = 1; j <= n; j++) {
+					x[To1D(i,j)] = (x0[To1D(i,j)] + a*(x[To1D(i-1,j)]+x[To1D(i+1,j)]+x[To1D(i,j-1)]+x[To1D(i,j+1)]))/c;
+				}
+			}
+			SetBoundary(n, b, ref x);
+		}
 	}
+
 
 	
 	void Project(int n, ref float[] u, ref float[] v, ref float[] p, ref float[] div) {
-		buffer1.SetData(u);
-		buffer2.SetData(v);
-		buffer3.SetData(p);
-		buffer4.SetData(div);
+		int i, j;
 
-		compute.SetInt("proj_1_n", n);
-		compute.SetBuffer(k_project1, "proj_1_u", buffer1);
-		compute.SetBuffer(k_project1, "proj_1_v", buffer2);
-		compute.SetBuffer(k_project1, "proj_1_p", buffer3);
-		compute.SetBuffer(k_project1, "proj_1_div", buffer4);
+		for (i = 1; i <= n; i++) {
+			for (j = 1; j <= n; j++) {
+				div[To1D(i, j)] = -0.5f*(u[To1D(i+1,j)]-u[To1D(i-1,j)]+v[To1D(i,j+1)]-v[To1D(i,j-1)])/n;
+				p[To1D(i, j)] = 0.0f;
+			}
+		}
 
-		compute.Dispatch(k_project1, (n+2)/32 + 1, (n+2)/32 + 1, 1);
+		SetBoundary(n, 0, ref div);
+		SetBoundary(n, 0, ref p);
 
-		buffer1.GetData(u);
-		buffer2.GetData(v);
-		buffer3.GetData(p);
-		buffer4.GetData(div);
+		LinearSolve(n, 0, ref p, ref div, 1, 4);
 
-		LinearSolve(n, 0, ref p, ref div, 1f, 4f);
+		for (i = 1; i <= n; i++) {
+			for (j = 1; j <= n; j++) {
+				u[To1D(i,j)] -= 0.5f * n * (p[To1D(i+1,j)] - p[To1D(i-1,j)]);
+				v[To1D(i,j)] -= 0.5f * n * (p[To1D(i,j+1)] - p[To1D(i,j-1)]);
+			}
+		}
 
-		buffer1.SetData(u);
-		buffer2.SetData(v);
-		buffer3.SetData(p);
-		buffer4.SetData(div);
-
-		compute.SetInt("proj_2_n", n);
-		compute.SetBuffer(k_project2, "proj_2_u", buffer1);
-		compute.SetBuffer(k_project2, "proj_2_v", buffer2);
-		compute.SetBuffer(k_project2, "proj_2_p", buffer3);
-		compute.SetBuffer(k_project2, "proj_2_div", buffer4);
-
-		compute.Dispatch(k_project2, (n+2)/32 + 1, (n+2)/32 + 1, 1);
-
-		buffer1.GetData(u);
-		buffer2.GetData(v);
-		buffer3.GetData(p);
-		buffer4.GetData(div);
+		SetBoundary(n, 1, ref u);
+		SetBoundary(n, 2, ref v);
 	}
 	
+
+
 	void Advect (int n, int b, ref float[] d, ref float[] d0, ref float[] u, ref float[] v, float dt) {
-		buffer1.SetData(d);
-		buffer2.SetData(d0);
-		buffer3.SetData(u);
-		buffer4.SetData(v);
+		int i, j, i0, j0, i1, j1;
+		float x, y, s0, t0, s1, t1, dt0;
 
-		compute.SetInt("adv_n", n);
-		compute.SetInt("adv_b", b);
-		compute.SetBuffer(k_advect, "adv_d", buffer1);
-		compute.SetBuffer(k_advect, "adv_d0", buffer2);
-		compute.SetBuffer(k_advect, "adv_u", buffer3);
-		compute.SetBuffer(k_advect, "adv_v", buffer4);
-		compute.SetFloat("adv_dt", dt);
+		dt0 = dt * n;
 
-		compute.Dispatch(k_advect, (n+2)/32 + 1, (n+2)/32 + 1, 1);
+		for (i = 1; i <= n; i++) {
+			for (j = 1; j <= n; j++) {
+				x = i - dt0*u[To1D(i,j)];
+				y = j - dt0*v[To1D(i,j)];
+				
+				if (x < 0.5f) x = 0.5f;
+				if (x > n+0.5f) x = n+0.5f;
+				i0 = (int)x;
+				i1 = i0 + 1;
+				
+				if (y < 0.5f) y = 0.5f;
+				if (y > n+0.5f) y = n + 0.5f;
+				j0 = (int)y;
+				j1 = j0 + 1;
 
-		buffer1.GetData(d);
-		buffer2.GetData(d0);
-		buffer3.GetData(u);
-		buffer4.GetData(v);
+				s1 = x - i0;
+				s0 = 1f - s1;
+
+				t1 = y - j0;
+				t0 = 1f - t1;
+				
+				d[To1D(i,j)] = 	s0*(t0*d0[To1D(i0,j0)] + t1*d0[To1D(i0,j1)]) +
+								s1*(t0*d0[To1D(i1,j0)] + t1*d0[To1D(i1,j1)]);
+			}
+		}
+
+		SetBoundary(n, b, ref d);
 	}
 
 
@@ -312,10 +283,14 @@ public class GPUFluid2D : MonoBehaviour {
 
 
 	void DrawDensity() {
-		buffer1.SetData(dens);
-		compute.SetTexture(k_buffer2texture, "b2t_tex", texture);
-		compute.SetBuffer(k_buffer2texture, "b2t_buf", buffer1);
-		compute.Dispatch(k_buffer2texture,  (n+2)/32 + 1, (n+2)/32 + 1, 1);
+		Color[] tmp = texture.GetPixels(0);
+
+		for (int i = 0; i < tmp.Length; i++) {
+			tmp[i] = new Color(dens[i], dens[i], dens[i], 1f);
+		}
+
+		texture.SetPixels(tmp, 0);
+		texture.Apply();
 	}
 
 
@@ -345,29 +320,5 @@ public class GPUFluid2D : MonoBehaviour {
 		p += 0.5f * Vector3.one;
 		p *= (n+2);
 		return new Vector2Int((int)p.x, (int)p.z);
-	}
-
-
-
-	void OnDestroy() {
-		if (buffer1 != null) {
-			buffer1.Release();
-		}
-
-		if (buffer2 != null) {
-			buffer2.Release();
-		}
-
-		if (buffer3 != null) {
-			buffer3.Release();
-		}
-
-		if (buffer4 != null) {
-			buffer4.Release();
-		}
-
-		if (texture != null) {
-			texture.Release();
-		}
 	}
 }

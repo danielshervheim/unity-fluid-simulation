@@ -1,0 +1,216 @@
+//
+// Copyright © Daniel Shervheim, 2019
+// danielshervheim@gmail.com
+// danielshervheim.com
+//
+
+
+
+//
+// GLOBAL VARIABLES
+//
+
+uint n, n2, len;
+float dt, diff, visc;
+
+
+
+//
+// UTILITIES
+//
+
+// Converts a 2d index to a 1d index.
+uint To1D(uint x, uint y) {
+    return y*n2 + x;
+}
+
+// Converts a 2d index to a 1d index.
+uint To1D(uint2 id) {
+    return To1D(id.x, id.y);
+}
+
+// Converts a 1d index to a 2d index.
+uint2 To2D(uint id) {
+    return uint2(id%n2, id/n2);
+}
+
+// Returns whether the given index is within the inner rectangle.
+bool IsInBounds(uint id) {
+    uint2 id2 = To2D(id);
+    return id2.x >= 1 && id2.y >= 1 && id2.x <= n && id2.y <= n;
+}
+
+// Returns the id of the cell to the left of the input cell.
+uint Left(uint id) {
+    uint2 id2 = To2D(id);
+    id2 -= uint2(1, 0);
+    id2.x = max(id2.x, 0);
+    return To1D(id2);
+}
+
+// Returns the id of the cell to the right of the input cell.
+uint Right(uint id) {
+    uint2 id2 = To2D(id);
+    id2 += uint2(1, 0);
+    id2.x = min(id2.x, n2-1);
+    return To1D(id2);
+}
+
+// Returns the id of the cell beneath the input cell.
+uint Bottom(uint id) {
+    uint2 id2 = To2D(id);
+    id2 -= uint2(0, 1);
+    id2.y = max(id2.y, 0);
+    return To1D(id2);
+}
+
+// Returns the id of the cell above the input cell.
+uint Top(uint id) {
+    uint2 id2 = To2D(id);
+    id2 += uint2(0, 1);
+    id2.y = min(id2.y, n2-1);
+    return To1D(id2);
+}
+
+
+
+//
+// KERNELS
+//
+
+#pragma kernel AddSource
+
+RWStructuredBuffer<float> as_x;
+StructuredBuffer<float> as_s;
+
+[numthreads(256, 1, 1)]
+void AddSource(uint id : SV_DispatchThreadID) {
+    as_x[id] += dt*as_s[id];
+}
+
+
+
+#pragma kernel LinearSolve
+
+RWStructuredBuffer<float> ls_x;
+StructuredBuffer<float> ls_x0;
+float ls_a, ls_c;
+
+[numthreads(256, 1, 1)]
+void LinearSolve(uint id : SV_DispatchThreadID) {
+    if (!IsInBounds(id)) return;
+
+    ls_x[id] = (
+        ls_x0[id] + ls_a * (
+            ls_x[Left(id)] +
+            ls_x[Right(id)] +
+            ls_x[Bottom(id)] +
+            ls_x[Top(id)]
+        )
+    ) / ls_c;
+}
+
+
+
+#pragma kernel Advect
+
+RWStructuredBuffer<float> ad_d;
+StructuredBuffer<float> ad_d0, ad_u, ad_v;
+
+[numthreads(256, 1, 1)]
+void Advect(uint id : SV_DispatchThreadID) {
+    if (!IsInBounds(id)) return;
+
+    float dt0 = dt * n;
+
+    uint i = To2D(id).x;
+    float x = i - dt0 * ad_u[id];
+    if (x < 0.5) x = 0.5;
+    if (x > n+0.5) x = n+0.5;
+    uint i0 = (uint)x;
+    uint i1 = i0+1;
+    float s1 = x-i0;
+    float s0 = 1.0 - s1;
+
+    uint j = To2D(id).y;
+    float y = j - dt0 * ad_v[id];
+    if (y < 0.5) y = 0.5;
+    if (y > n+0.5) y = n+0.5;
+    uint j0 = (uint)y;
+    uint j1 = j0+1;
+    float t1 = y - j0;
+    float t0 = 1.0 - t1;
+
+    ad_d[id] = s0 * (
+        t0 * ad_d0[To1D(i0, j0)] +
+        t1 * ad_d0[To1D(i0, j1)]
+    ) + s1 * (
+        t0 * ad_d0[To1D(i1, j0)] +
+        t1 * ad_d0[To1D(i1, j1)]
+    );
+}
+
+
+
+#pragma kernel ProjectStart
+
+RWStructuredBuffer<float> ps_p, ps_div;
+StructuredBuffer<float> ps_u, ps_v;
+
+[numthreads(256, 1, 1)]
+void ProjectStart(uint id : SV_DispatchThreadID) {
+    if (!IsInBounds(id)) return;
+
+    ps_div[id] = -0.5 * (
+        ps_u[Right(id)] -
+        ps_u[Left(id)] +
+        ps_v[Top(id)] -
+        ps_v[Bottom(id)]
+    ) / (float)n;
+
+    ps_p[id] = 0.0;
+}
+
+
+
+#pragma kernel ProjectFinish
+
+RWStructuredBuffer<float> pf_u, pf_v;
+StructuredBuffer<float> pf_p;
+
+[numthreads(256, 1, 1)]
+void ProjectFinish(uint id : SV_DispatchThreadID) {
+    if (!IsInBounds(id)) return;
+
+    pf_u[id] -= 0.5 * n * (pf_p[Right(id)] - pf_p[Left(id)]);
+    pf_v[id] -= 0.5 * n * (pf_p[Top(id)] - pf_p[Bottom(id)]);
+}
+
+
+
+#pragma kernel BufferToTexture
+
+RWTexture2D<float4> b2t_texture;
+StructuredBuffer<float> b2t_u, b2t_v, b2t_d;
+
+[numthreads(32, 32, 1)]
+void BufferToTexture(uint2 id : SV_DispatchThreadID) {
+    if (!IsInBounds(To1D(id))) return;
+
+    uint index = To1D(id);
+    float u = b2t_u[index];
+    float v = b2t_v[index];
+    float d = b2t_d[index];
+    b2t_texture[id] = float4(d, d, d, 1.0);
+}
+
+
+
+#pragma kernel ClearBuffer
+
+RWStructuredBuffer<float> cb_buffer;
+
+[numthreads(256, 1, 1)]
+void ClearBuffer(uint id : SV_DispatchThreadID) {
+    cb_buffer[id] = 0.0;
+}
