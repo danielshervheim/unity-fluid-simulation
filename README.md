@@ -1,6 +1,6 @@
 # Fluid Simulation
 
-![gif](https://imgur.com/7tXuHNS.gif)
+![gif](https://i.imgur.com/ws0uABd.gif)
 
 A 2D Eularian fluid simulation  based on Jos Stam's paper *[Real-Time Fluid Dynamics for Games](https://pdfs.semanticscholar.org/847f/819a4ea14bd789aca8bc88e85e906cfc657c.pdf)*, implemented in [Unity](https://unity3d.com/).
 
