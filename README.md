@@ -1,11 +1,27 @@
 # Fluid Simulation
 
-A Eularian fluid simulation  based on Jos Stam's paper *[Real-Time Fluid Dynamics for Games](https://pdfs.semanticscholar.org/847f/819a4ea14bd789aca8bc88e85e906cfc657c.pdf)*, implemented in [Unity](https://unity3d.com/).
-
 ![image](https://i.imgur.com/naG9ADa.jpg)
 
-See it in action [here](http://www.youtube.com/watch?v=aUgFWNUzMw0).
+Watch on [Youtube](http://www.youtube.com/watch?v=aUgFWNUzMw0).
 
-In CPU based fluid solvers, the bottleneck is generally the size of the simulation grid. To alleviate these problems, I implemented my solver on the GPU via Unity's ComputeShader interface. This greatly increased the speed of the resulting simulations. My computer was able to simulate a 1024 × 1024 grid at interactive framerates (> 60 fps).
+## About
 
-I also included a CPU-only implementation for reference. (In comparison, my computer was only able to simulate a 64 × 64 grid at interactive framerates with the CPU version).
+A fluid simulation I made for a class assignment, based on Jos Stam's excellent paper *[Real-Time Fluid Dynamics for Games](https://pdfs.semanticscholar.org/847f/819a4ea14bd789aca8bc88e85e906cfc657c.pdf)*.
+
+
+
+In fluid solvers, the bottleneck is generally the size of the simulation grid. To improve upon Stam's original work, I implemented my solver on the GPU via Compute shaders. (I also included a CPU version for reference).
+
+
+
+The GPU version can handle a **1024 x 1024** grid at 60 fps, while the CPU version can only handle about a **64 x 64** grid.  (As tested on a Ryzen 5, Nvidia GTX 1060 machine. Your mileage may vary).
+
+
+
+## To Use
+
+Right-click to deposit ink.
+
+Left-click to swirl the liquid around.
+
+Middle-click to reset.
