@@ -1,4 +1,4 @@
-# Fluid Simulation
+# Fluid Simulation in Unity
 
 ![image](https://i.imgur.com/naG9ADa.jpg)
 
