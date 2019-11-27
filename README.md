@@ -1,27 +1,19 @@
-# Fluid Simulation in Unity
+# Fluid Simulation
 
 ![image](https://i.imgur.com/naG9ADa.jpg)
 
-Watch on [Youtube](http://www.youtube.com/watch?v=aUgFWNUzMw0).
+I wrote this fluid simulation as a project for an animation and planning course I took in university.
 
-## About
-
-A fluid simulation I made for a class assignment, based on Jos Stam's excellent paper *[Real-Time Fluid Dynamics for Games](https://pdfs.semanticscholar.org/847f/819a4ea14bd789aca8bc88e85e906cfc657c.pdf)*.
-
-
-
-In fluid solvers, the bottleneck is generally the size of the simulation grid. To improve upon Stam's original work, I implemented my solver on the GPU via Compute shaders. (I also included a CPU version for reference).
-
-
-
-The GPU version can handle a **1024 x 1024** grid at 60 fps, while the CPU version can only handle about a **64 x 64** grid.  (As tested on a Ryzen 5, Nvidia GTX 1060 machine. Your mileage may vary).
-
-
+Read more about it [here](https://danielshervheim.com/projects/fluid-simulation).
 
 ## To Use
 
-Right-click to deposit ink.
+- Clone this repository and open it in Unity.
 
-Left-click to swirl the liquid around.
+- Press Play.
 
-Middle-click to reset.
+- Right-click and drag to deposit density into the density grid.
+
+- Left-click and drag to apply forces to the velocity grid.
+
+- Middle-click to reset both grids.
