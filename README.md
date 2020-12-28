@@ -4,7 +4,7 @@
 
 I wrote this fluid simulation as a project for an animation and planning course I took in university.
 
-Read more about it [here](https://danielshervheim.com/projects/fluid-simulation).
+Read more about it [here](https://danielshervheim.com/coursework/csci-5611/fluid-simulation).
 
 ## To Use
 
