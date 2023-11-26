@@ -1,6 +1,6 @@
 # Fluid Simulation
 
-![image](https://i.imgur.com/naG9ADa.jpg)
+![image](img/naG9ADa.jpg)
 
 I wrote this fluid simulation as a project for an animation and planning course I took in university.
 
